@@ -1,0 +1,8 @@
+src/local_configs.py
+venv
+src/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
