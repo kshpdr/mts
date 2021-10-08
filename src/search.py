@@ -53,4 +53,4 @@ def find_specific_module(link):
     info["lehrinhalte"] = lehrinhalte
     return info
 
-find_specific_module("https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer=20629&version=1&sprache=1")
+print(find_specific_module("https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer=40029&version=5&sprache=1çç"))
