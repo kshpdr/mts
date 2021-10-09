@@ -1,5 +1,6 @@
 import telebot
-import local_configs as config
+# import local_configs as config
+import env_configs as config
 from search import *
 from telebot import types
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
