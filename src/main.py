@@ -1,14 +1,11 @@
 import telebot
-# import local_configs as config
-import env_configs as config
+import local_configs as config
+# import env_configs as config
 from search import *
-from telebot import types
-# from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from enum import Enum
+# from telebot import types
 import os
 import logging
 from flask import Flask, request
-
 
 from telegram_bot_pagination import InlineKeyboardPaginator
 
@@ -35,7 +32,7 @@ def show_modules(message, page=1):
         )
 
         for i in range((page-1) * 10, (page-1) * 10 + (len(modules) % 10)*(page == total_pages) + 10*(page != total_pages)):
-            paginator.add_after(types.InlineKeyboardButton(f'{modules[i][2]}', callback_data=i))
+            paginator.add_after(telebot.types.InlineKeyboardButton(f'{modules[i][2]}', callback_data=i))
 
         bot.send_message(message.chat.id, "*Ergebnisse:*", parse_mode='Markdown',
                          reply_markup=paginator.markup)
@@ -72,7 +69,6 @@ def show_specific_module(call):
     version = module[0].split(" / ")[1]
     link = f"https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer={nummer}&version={version}&sprache=1"
     info = find_specific_module(link)
-    print("hui")
     bot.send_message(call.message.chat.id,
                      f"<b>Titel des Moduls:</b> {info['titel']} \n"
                      f"<b>Leistungspunkte:</b> {info['lp']} \n"
