@@ -6,6 +6,7 @@ from search import *
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from enum import Enum
 import os
+import logging
 
 from telegram_bot_pagination import InlineKeyboardPaginator
 
