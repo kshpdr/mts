@@ -2,8 +2,8 @@ import telebot
 # import local_configs as config
 import env_configs as config
 from search import *
-# from telebot import types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot import types
+# from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from enum import Enum
 import os
 import logging
@@ -35,7 +35,7 @@ def show_modules(message, page=1):
         )
 
         for i in range((page-1) * 10, (page-1) * 10 + (len(modules) % 10)*(page == total_pages) + 10*(page != total_pages)):
-            paginator.add_after(InlineKeyboardButton(f'{modules[i][2]}', callback_data=i))
+            paginator.add_after(types.InlineKeyboardButton(f'{modules[i][2]}', callback_data=i))
 
         bot.send_message(message.chat.id, "*Ergebnisse:*", parse_mode='Markdown',
                          reply_markup=paginator.markup)
