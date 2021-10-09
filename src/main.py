@@ -67,15 +67,39 @@ def show_specific_module(call):
     version = module[0].split(" / ")[1]
     link = f"https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer={nummer}&version={version}&sprache=1"
     info = find_specific_module(link)
+    print("hui")
     bot.send_message(call.message.chat.id,
-                     f"*Titel des Moduls:* {info['titel']} \n"
-                     f"*Leistungspunkte:* {info['lp']} \n"
-                     f"*Modul/Version:* {info['modul/version']} \n"
-                     f"*Verantwortliche Person:* {info['verantwortliche']} \n"
-                     f"*E-Mail-Adresse:* {info['email']} \n"
-                     f"*Lernergebnisse:* {info['lernergebnisse']} \n \n"
-                     f"*Lehrinhalte:* {info['lehrinhalte']}",
-                     parse_mode="Markdown")
+                     f"<b>Titel des Moduls:</b> {info['titel']} \n"
+                     f"<b>Leistungspunkte:</b> {info['lp']} \n"
+                     f"<b>Modul/Version:</b> {info['modul/version']} \n"
+                     f"<b>Verantwortliche Person:</b> {info['verantwortliche']} \n"
+                     f"<b>E-Mail-Adresse:</b> {info['email']} \n"
+                     f"<b>Lernergebnisse:</b> {info['lernergebnisse']} \n \n"
+                     f"<b>Lehrinhalte:</b> {info['lehrinhalte']}",
+                     parse_mode="HTML")
     print(info)
+    
+    
+# check if heroku variable is in the environment
+if "HEROKU" in list(os.environ.keys()):
+    logger = telebot.logger
+    telebot.logger.setLevel(logging.INFO)
 
-bot.polling()
+    server = Flask(__name__)
+
+    @server.route("/", methods=['POST'])
+    def getMessage():
+        bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+        return "!", 200
+
+    @server.route("/")
+    def webhook():
+        bot.remove_webhook()
+        bot.set_webhook(url=config.app_url)
+        return "?", 200
+    server.run(host="0.0.0.0", port=os.environ.get('PORT', 80))
+else:
+    # without heroku variable local use
+    # delete webhook and use long polling
+    bot.remove_webhook()
+    bot.polling(none_stop=True)
