@@ -1,7 +1,6 @@
 # Other stuff
 src/local_configs.py
 venv
-src/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
