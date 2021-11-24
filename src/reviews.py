@@ -1,5 +1,5 @@
-# import local_configs as config
-import env_configs as config
+import local_configs as config
+#import env_configs as config
 import psycopg2
 
 conn = psycopg2.connect(config.DATABASE_URL, sslmode='require')
@@ -13,7 +13,7 @@ def save_review_database(module_id, review):
 
 
 def get_all_reviews(module_id):
-    all_reviews = "            *Ergebnisse*            \n\n"
+    all_reviews = "<b>Alle Bewertungen:</b>\n\n"
     cur.execute(f"SELECT * FROM reviews \
                 WHERE module_id = {module_id}")
     row = cur.fetchone()

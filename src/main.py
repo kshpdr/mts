@@ -1,6 +1,6 @@
 import telebot
-# import local_configs as config
-import env_configs as config
+import local_configs as config
+#import env_configs as config
 from search import *
 # from telebot import types
 import os
@@ -64,7 +64,7 @@ def show_modules(message, page=1):
 @bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
 def show_reviews(call):
     reviews = get_all_reviews(module_id)
-    bot.send_message(call.message.chat.id, reviews)
+    bot.send_message(call.message.chat.id, reviews, parse_mode="HTML")
 
 
 # @bot.callback_query_handler(func=lambda call: call.data =='approve')
