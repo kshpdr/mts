@@ -1,5 +1,5 @@
-import local_configs as config
-#import env_configs as config
+# import local_configs as config
+import env_configs as config
 import psycopg2
 
 conn = psycopg2.connect(config.DATABASE_URL, sslmode='require')
