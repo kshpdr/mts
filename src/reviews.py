@@ -13,13 +13,14 @@ def save_review_database(module_id, review):
 
 
 def get_all_reviews(module_id):
-    all_reviews = ""
+    all_reviews = "            *Ergebnisse*            \n\n"
     cur.execute(f"SELECT * FROM reviews \
                 WHERE module_id = {module_id}")
     row = cur.fetchone()
     if row is None:
         return "Leider gibt es jetzt keine Bewertungen für dieses Modul. Aber du kannst eine hinzufügen!"
     while row is not None:
+        all_reviews += "• "
         all_reviews += row[1]
         all_reviews += "\n \n"
         row = cur.fetchone()
