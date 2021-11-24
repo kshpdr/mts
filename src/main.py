@@ -9,12 +9,13 @@ from flask import Flask, request
 from telebot import custom_filters
 from telegram_bot_pagination import InlineKeyboardPaginator
 
-from reviews import save_review_database, get_all_reviews
-from markups import generate_paginator, gen_review_markup
+from reviews import save_review_database, get_all_reviews, reviews_in_total, modules_in_total, reviewed_modules
+from markups import generate_paginator, gen_review_markup, report_markup
 
 bot = telebot.TeleBot(config.telegram_token)
 module_to_find = ""
 module_id = 0
+module_name = ""
 
 
 class States:
@@ -24,23 +25,47 @@ class States:
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
-    bot.send_message(message.chat.id, "Herzlich Willkommen! Hier können Sie alle Module finden, die auf Moses zur Verfügung stehen, und die wichtigste Info über sie. Auch Sie können Bewertung für jedes Modul anschauen und selbst ein Feedback lassen, wenn Sie was zu sagen haben. Viel Spaß!")
+    bot.send_message(message.chat.id, "Um ein nötiges Modul zu finden, schreib einfach den offiziellen Namen, ein Teil reicht auch. \n\n"
+                                      "Wenn du aber Modul bewerten willst, könnte das hilfreich sein:\n" 
+                                      "- Schreib etwas, was du selbst gewusst hättest, bevor das Modul auszuwählen\n"
+                                      "- Welche Tutoren nach deiner Meinung gut waren, welche nicht\n"
+                                      "- Was prüfungsrelevant ist, welche Feinheiten es gibt\n"
+                                      "- Inwiefern das Modul wirklich aufwendig ist\n"
+                                      "- Ob es überhaupt Spaß gemacht hat oder es eher um Bestehen und Vergessen ging\n"
+                                      "- Vermeide jegliche Art von Beleidigungen")
     bot.set_state(message.chat.id, States.reading)
+
+
+@bot.message_handler(commands=['stats'])
+def show_stats(message):
+    bot.send_message(message.chat.id,
+                     f"Es wurden schon *{reviews_in_total()}* Bewertungen geschrieben"
+                    f" und *{modules_in_total()}* Module insgesamt bewertet!",
+                    parse_mode="Markdown")
+
+
+@bot.message_handler(commands=['modules'])
+def show_modules(message):
+    modules = reviewed_modules()
+    bot.send_message(message.chat.id,
+                     modules,
+                     parse_mode="Markdown")
 
 
 @bot.message_handler(state=States.writing)
 def save_review(message):
-    global module_id
     #bot.send_message(message.chat.id, message.text) #return a message itself for test purposes
-    save_review_database(module_id, message.text)
+    save_review_database(module_id, message.text, module_name)
     bot.set_state(message.chat.id, States.reading)
     bot.send_message(message.chat.id, "Vielen Dank für deine Rückmeldung. Sie wird demnächst veröffentlicht!")
-    module_id = 0
 
 
 @bot.message_handler(func=lambda m: True, content_types=["text"])
 def show_modules(message, page=1):
     bot.set_state(message.chat.id, States.reading)
+    global module_id, module_name
+    module_id = 0
+    module_name = ""
     try:
         global module_to_find
         module_to_find = message
@@ -63,14 +88,16 @@ def show_modules(message, page=1):
 
 @bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
 def show_reviews(call):
-    reviews = get_all_reviews(module_id)
-    bot.send_message(call.message.chat.id, reviews, parse_mode="HTML")
+    reviews = get_all_reviews(module_id, module_name)
+    bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=report_markup())
 
 
-# @bot.callback_query_handler(func=lambda call: call.data =='approve')
-# def approve_review(call):
-#     reviews = get_all_reviews(module_id)
-#     bot.send_message(call.message.chat.id, reviews)
+@bot.callback_query_handler(func=lambda call: call.data =='report')
+def send_report(call):
+    bot.send_message(call.message.chat.id, "Danke, Report wurde gesendet!")
+    bot.send_message(206662948, f"*Report ist eingegangen.* \n"
+                                f"Schau mal in die Bewertungen von *{module_name}* an.",
+                     parse_mode="Markup")
 
 
 @bot.callback_query_handler(func=lambda call: call.data =='bewerten')
@@ -93,7 +120,7 @@ def characters_page_callback(call):
 
 @bot.callback_query_handler(func=lambda call: True)
 def show_specific_module(call):
-    global module_id
+    global module_id, module_name
     modules = find_modules(module_to_find)
     module = modules[int(call.data)]
     nummer = module[0].split(" / ")[0]
@@ -101,6 +128,7 @@ def show_specific_module(call):
     link = f"https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer={nummer}&version={version}&sprache=1"
     info = find_specific_module(link)
     module_id = nummer
+    module_name = info['titel']
     bot.send_message(call.message.chat.id,
                      f"<b>Titel des Moduls:</b> {info['titel']} \n"
                      f"<b>Leistungspunkte:</b> {info['lp']} \n"
@@ -111,10 +139,6 @@ def show_specific_module(call):
                      f"<b>Lehrinhalte:</b> {info['lehrinhalte']}",
                      parse_mode="HTML", reply_markup=gen_review_markup())
     print(info)
-
-
-# def approve_message(review):
-#     bot.send_message(206662948, review, reply_markup=approval_markup())
 
 
 bot.add_custom_filter(custom_filters.StateFilter(bot))

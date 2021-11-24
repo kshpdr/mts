@@ -19,6 +19,14 @@ def gen_review_markup():
     return markup
 
 
+def report_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 1
+    markup.add(InlineKeyboardButton("Report", callback_data="report"))
+    return markup
+
+
+
 # def approval_markup():
 #     markup = InlineKeyboardMarkup()
 #     markup.row_width = 2
