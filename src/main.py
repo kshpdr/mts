@@ -1,25 +1,46 @@
 import telebot
-# import local_configs as config
-import env_configs as config
+import local_configs as config
+# import env_configs as config
 from search import *
 # from telebot import types
 import os
 import logging
 from flask import Flask, request
-
+from telebot import custom_filters
 from telegram_bot_pagination import InlineKeyboardPaginator
+
+from reviews import save_review_database, get_all_reviews
+from markups import generate_paginator, gen_review_markup
 
 bot = telebot.TeleBot(config.telegram_token)
 module_to_find = ""
+module_id = 0
+
+
+class States:
+    reading = 1
+    writing = 2
 
 
 @bot.message_handler(commands=['start'])
 def start_command(message):
     bot.send_message(message.chat.id, "Herzlich Willkommen! Hier können Sie alle Module finden, die auf Moses zur Verfügung stehen, und die wichtigste Info über sie. Auch Sie können Bewertung für jedes Modul anschauen und selbst ein Feedback lassen, wenn Sie was zu sagen haben. Viel Spaß!")
+    bot.set_state(message.chat.id, States.reading)
+
+
+@bot.message_handler(state=States.writing)
+def save_review(message):
+    global module_id
+    #bot.send_message(message.chat.id, message.text) #return a message itself for test purposes
+    save_review_database(module_id, message.text)
+    bot.set_state(message.chat.id, States.reading)
+    bot.send_message(message.chat.id, "Vielen Dank für deine Rückmeldung. Sie wird demnächst veröffentlicht!")
+    module_id = 0
 
 
 @bot.message_handler(func=lambda m: True, content_types=["text"])
 def show_modules(message, page=1):
+    bot.set_state(message.chat.id, States.reading)
     try:
         global module_to_find
         module_to_find = message
@@ -40,13 +61,22 @@ def show_modules(message, page=1):
         bot.send_message(message.chat.id, "Keine Module gefunden :(")
 
 
-def generate_paginator(page_count, page=1):
-    paginator = InlineKeyboardPaginator(
-            page_count=page_count,
-            current_page=page,
-            data_pattern='page#{page}'
-        )
-    return paginator.markup
+@bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
+def show_reviews(call):
+    reviews = get_all_reviews(module_id)
+    bot.send_message(call.message.chat.id, reviews)
+
+
+# @bot.callback_query_handler(func=lambda call: call.data =='approve')
+# def approve_review(call):
+#     reviews = get_all_reviews(module_id)
+#     bot.send_message(call.message.chat.id, reviews)
+
+
+@bot.callback_query_handler(func=lambda call: call.data =='bewerten')
+def get_review(call):
+    bot.send_message(call.message.chat.id, "Schreiben Sie Ihre Rezension!")
+    bot.set_state(call.message.chat.id, States.writing)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='page')
@@ -63,12 +93,14 @@ def characters_page_callback(call):
 
 @bot.callback_query_handler(func=lambda call: True)
 def show_specific_module(call):
+    global module_id
     modules = find_modules(module_to_find)
     module = modules[int(call.data)]
     nummer = module[0].split(" / ")[0]
     version = module[0].split(" / ")[1]
     link = f"https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer={nummer}&version={version}&sprache=1"
     info = find_specific_module(link)
+    module_id = nummer
     bot.send_message(call.message.chat.id,
                      f"<b>Titel des Moduls:</b> {info['titel']} \n"
                      f"<b>Leistungspunkte:</b> {info['lp']} \n"
@@ -77,9 +109,16 @@ def show_specific_module(call):
                      f"<b>E-Mail-Adresse:</b> {info['email']} \n"
                      f"<b>Lernergebnisse:</b> {info['lernergebnisse']} \n \n"
                      f"<b>Lehrinhalte:</b> {info['lehrinhalte']}",
-                     parse_mode="HTML")
+                     parse_mode="HTML", reply_markup=gen_review_markup())
     print(info)
-    
+
+
+# def approve_message(review):
+#     bot.send_message(206662948, review, reply_markup=approval_markup())
+
+
+bot.add_custom_filter(custom_filters.StateFilter(bot))
+
     
 # check if heroku variable is in the environment
 if "HEROKU" in list(os.environ.keys()):
