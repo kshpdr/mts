@@ -9,8 +9,8 @@ from flask import Flask, request
 from telebot import custom_filters
 from telegram_bot_pagination import InlineKeyboardPaginator
 
-from reviews import save_review_database, get_all_reviews, reviews_in_total, modules_in_total, reviewed_modules
-from markups import generate_paginator, gen_review_markup, report_markup
+from reviews import save_review_database, get_all_reviews, reviews_in_total, modules_in_total, reviewed_modules, save_star_database, calculate_average_star
+from markups import generate_paginator, gen_review_markup, report_markup, stars_markup
 
 bot = telebot.TeleBot(config.telegram_token)
 module_to_find = ""
@@ -45,7 +45,7 @@ def show_stats(message):
 
 
 @bot.message_handler(commands=['modules'])
-def show_modules(message):
+def show_reviewed_modules(message):
     modules = reviewed_modules()
     bot.send_message(message.chat.id,
                      modules,
@@ -88,7 +88,8 @@ def show_modules(message, page=1):
 
 @bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
 def show_reviews(call):
-    reviews = get_all_reviews(module_id, module_name)
+    average_star = calculate_average_star(module_id)
+    reviews = get_all_reviews(module_id, module_name, average_star)
     bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=report_markup())
 
 
@@ -104,6 +105,29 @@ def send_report(call):
 def get_review(call):
     bot.send_message(call.message.chat.id, "Schreiben Sie Ihre Rezension!")
     bot.set_state(call.message.chat.id, States.writing)
+
+
+@bot.callback_query_handler(func=lambda call: call.data =='stars')
+def give_star(call):
+    bot.send_message(call.message.chat.id,
+                     "Geben Sie die Anzahl von Sternen für dieses Modul!\n\n"
+                     "5 - Gut gemacht. Würde sogar aus Spaß wiederholen\n"
+                     "4 - Ziemlich nice, aber leider nicht ideal\n"
+                     "3 - Passt. Gibt bessere, aber auch schlechtere\n"
+                     "2 - Naja, hätte nicht abgelegt\n"
+                     "1 - Albtraum. Nie wieder.",
+                     reply_markup=stars_markup())
+
+
+@bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='star')
+def save_star(call):
+    star = int(call.data.split('#')[1])
+    if (save_star_database(module_id, module_name, star, call.message.chat.id) == "success"):
+        bot.send_message(call.message.chat.id,
+                            "Danke, deine Bewertung wurde gespeichert.")
+    else:
+        bot.send_message(call.message.chat.id,
+                         "Das Modul wurde schon bewertet.")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='page')
