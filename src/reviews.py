@@ -53,13 +53,14 @@ def reviews_in_total():
 
 
 def modules_in_total():
-    cur.execute("SELECT COUNT(DISTINCT module_id) FROM reviews")
+    cur.execute("SELECT COUNT(DISTINCT module_id) FROM stars")
     row = cur.fetchone()
+    print(row)
     return row[0]
 
 
 def reviewed_modules():
-    modules = "*Diese Module wurden schon bewertet:*\n\n"
+    modules = "*Diese Module wurden schon kommentiert:*\n\n"
     cur.execute("SELECT DISTINCT module_name FROM reviews")
     row = cur.fetchone()
     while row is not None:

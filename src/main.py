@@ -1,5 +1,5 @@
 import telebot
-# import local_configs as config
+#import local_configs as config
 import env_configs as config
 from search import *
 # from telebot import types
@@ -39,7 +39,7 @@ def start_command(message):
 @bot.message_handler(commands=['stats'])
 def show_stats(message):
     bot.send_message(message.chat.id,
-                     f"Es wurden schon *{reviews_in_total()}* Bewertungen geschrieben"
+                     f"Es wurden schon *{reviews_in_total()}* Rezensionen geschrieben"
                     f" und *{modules_in_total()}* Module insgesamt bewertet!",
                     parse_mode="Markdown")
 
