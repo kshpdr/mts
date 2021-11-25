@@ -13,8 +13,10 @@ def save_review_database(module_id, review, module_name):
 
 
 def save_star_database(module_id, module_name, star, user_id):
-    cur.execute(f"SELECT {user_id} FROM stars")
+    cur.execute(f"SELECT module_id, user_id, star FROM stars \
+                WHERE module_id = {module_id} AND user_id = {user_id}")
     row = cur.fetchone()
+    print(row)
     if row is not None:
         conn.commit()
         return "fail"
@@ -26,15 +28,15 @@ def save_star_database(module_id, module_name, star, user_id):
 
 
 
-def get_all_reviews(module_id, module_name, average_star):
-    all_reviews = f"Die Durchschnittsnote ist {round(average_star, 1)} ⭐ / 5 ⭐ \n\n"
+def get_all_reviews(module_id, module_name):
+    all_reviews = ""
     cur.execute(f"SELECT * FROM reviews \
                 WHERE module_id = {module_id}")
     row = cur.fetchone()
     if row is None:
         all_reviews += "Leider gibt es jetzt keine Rezensionen für dieses Modul. Aber du kannst eine hinzufügen!"
         return all_reviews
-    all_reviews = f"<b>Alle Bewertungen für {module_name}:</b>\n\n"
+    all_reviews = f"<b>Alle Rezensionen für {module_name}:</b>\n\n"
     while row is not None:
         all_reviews += "• "
         all_reviews += row[1]
@@ -70,8 +72,14 @@ def reviewed_modules():
 
 
 def calculate_average_star(module_id):
-    cur.execute(f"SELECT AVG(star) FROM stars \
-                WHERE module_id = {module_id}")
-    average_star = cur.fetchone()[0]
-    conn.commit()
-    return average_star
+    cur.execute(f"SELECT {module_id} FROM stars")
+    row = cur.fetchone()
+    if row is None:
+        conn.commit()
+        return None
+    else:
+        cur.execute(f"SELECT AVG(star) FROM stars \
+                    WHERE module_id = {module_id}")
+        average_star = cur.fetchone()[0]
+        conn.commit()
+        return average_star

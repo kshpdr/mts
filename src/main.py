@@ -1,5 +1,5 @@
 import telebot
-#import local_configs as config
+# import local_configs as config
 import env_configs as config
 from search import *
 # from telebot import types
@@ -10,7 +10,7 @@ from telebot import custom_filters
 from telegram_bot_pagination import InlineKeyboardPaginator
 
 from reviews import save_review_database, get_all_reviews, reviews_in_total, modules_in_total, reviewed_modules, save_star_database, calculate_average_star
-from markups import generate_paginator, gen_review_markup, report_markup, stars_markup
+from markups import generate_paginator, gen_review_markup, report_markup, stars_markup, grade_markup
 
 bot = telebot.TeleBot(config.telegram_token)
 module_to_find = ""
@@ -89,8 +89,14 @@ def show_modules(message, page=1):
 @bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
 def show_reviews(call):
     average_star = calculate_average_star(module_id)
-    reviews = get_all_reviews(module_id, module_name, average_star)
-    bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=report_markup())
+    print(module_id, average_star)
+    if average_star is None:
+        reviews = f"Leider gibt es noch keine Bewertungen."
+        bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=grade_markup())
+    else:
+        reviews = f"Durchschnittsnote ist {round(average_star, 1)} ⭐ / 5 ⭐ \n\n"
+        reviews += get_all_reviews(module_id, module_name)
+        bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=report_markup())
 
 
 @bot.callback_query_handler(func=lambda call: call.data =='report')
@@ -98,7 +104,7 @@ def send_report(call):
     bot.send_message(call.message.chat.id, "Danke, Report wurde gesendet!")
     bot.send_message(206662948, f"*Report ist eingegangen.* \n"
                                 f"Schau mal in die Bewertungen von *{module_name}* an.",
-                     parse_mode="Markup")
+                     parse_mode="Markdown")
 
 
 @bot.callback_query_handler(func=lambda call: call.data =='bewerten')

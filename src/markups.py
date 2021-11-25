@@ -36,3 +36,10 @@ def stars_markup():
                InlineKeyboardButton("4 ⭐", callback_data="star#4"),
                InlineKeyboardButton("5 ⭐", callback_data="star#5"))
     return markup
+
+
+def grade_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 5
+    markup.add(InlineKeyboardButton("Das Modul bewerten", callback_data="stars"))
+    return markup
