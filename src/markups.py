@@ -7,6 +7,7 @@ def gen_review_markup():
     markup.add(InlineKeyboardButton("Bewertungen und Rezensionen", callback_data="bewertungen"))
     markup.add(InlineKeyboardButton("Rezension schreiben", callback_data="bewerten"))
     markup.add(InlineKeyboardButton("Das Modul bewerten", callback_data="stars"))
+    markup.add(InlineKeyboardButton("Notenschlüssel", callback_data="gradekey"))
     return markup
 
 

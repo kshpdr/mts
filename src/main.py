@@ -10,12 +10,14 @@ from telegram_bot_pagination import InlineKeyboardPaginator
 
 from reviews import save_review_database, reviews_in_total, modules_in_total, reviewed_modules, save_star_database, calculate_average_star, get_all_reviews_list, get_all_semester_for_module
 from markups import gen_review_markup, stars_markup, grade_markup
+import grading_keys
 
 bot = telebot.TeleBot(config.telegram_token)
 module_to_find = ""
 module_id = 0
 module_name = ""
 semester = ""
+module_key = 0
 
 
 class States:
@@ -60,6 +62,13 @@ def send_report(call):
     bot.send_message(206662948, f"*Report ist eingegangen.* \n"
                                 f"Schau mal in die Bewertungen von *{module_name}* an.",
                      parse_mode="Markdown")
+
+
+# GRADING KEY GRADING SECTION #
+@bot.callback_query_handler(func=lambda call: call.data =='gradekey')
+def get_semester(call):
+    key = grading_keys.which_key(module_key)
+    bot.send_message(call.message.chat.id, key)
 
 
 # WRITE REVIEW SECTION #
@@ -188,13 +197,14 @@ def characters_page_callback(call):
 
 @bot.callback_query_handler(func=lambda call: True)
 def show_specific_module(call):
-    global module_id, module_name
+    global module_id, module_name, module_key
     modules = find_modules(module_to_find)
     module = modules[int(call.data)]
     nummer = module[0].split("\n")[0]
     version = module[0].split("\n")[1].replace("(", "").replace(")", "")
     link = f"https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer={nummer}&version={version}&sprache=1"
     info = find_specific_module(link)
+    module_key = info["key"]
     module_id = nummer
     module_name = info['titel']
     bot.send_message(call.message.chat.id,

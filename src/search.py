@@ -35,6 +35,18 @@ def find_specific_module(link):
 
     page = requests.get(link)
     soup = BeautifulSoup(page.content, "html.parser")
+
+    grading_key = soup.find_all("td", text="95.0")
+    if len(grading_key) == 0:
+        grading_key = soup.find_all("td", text="86.0")
+    if len(grading_key) == 0:
+        grading_key = soup.find_all("td", text="40.0")
+
+    if len(grading_key) != 0:
+        info["key"] = grading_key[0].text
+    else:
+        info["key"] = "0"
+
     titel_tag = soup.find_all("label", text="Titel des Moduls:")[0]
     info["titel"] = titel_tag.next_sibling.next_sibling.next_sibling.contents[0]
     lp_tag = soup.find_all("label", text="Leistungspunkte:")[0]
@@ -51,5 +63,6 @@ def find_specific_module(link):
     lehrinhalte = soup.find_all("h3", text="Lehrinhalte")[0].parent.next_sibling.next_sibling.contents[0].contents[0]
     info["lehrinhalte"] = lehrinhalte
     return info
+
 
 print(find_specific_module("https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer=40029&version=5&sprache=1çç"))
