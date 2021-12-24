@@ -2,27 +2,29 @@ import telebot
 #import local_configs as config
 import env_configs as config
 from search import *
-# from telebot import types
 import os
 import logging
 from flask import Flask, request
 from telebot import custom_filters
 from telegram_bot_pagination import InlineKeyboardPaginator
 
-from reviews import save_review_database, get_all_reviews, reviews_in_total, modules_in_total, reviewed_modules, save_star_database, calculate_average_star
-from markups import generate_paginator, gen_review_markup, report_markup, stars_markup, grade_markup
+from reviews import save_review_database, reviews_in_total, modules_in_total, reviewed_modules, save_star_database, calculate_average_star, get_all_reviews_list, get_all_semester_for_module
+from markups import gen_review_markup, stars_markup, grade_markup
 
 bot = telebot.TeleBot(config.telegram_token)
 module_to_find = ""
 module_id = 0
 module_name = ""
+semester = ""
 
 
 class States:
     reading = 1
     writing = 2
+    getting_semester = 3
 
 
+# BASIC SECTION #
 @bot.message_handler(commands=['start'])
 def start_command(message):
     bot.send_message(message.chat.id, "Um ein nötiges Modul zu finden, schreib einfach den offiziellen Namen, ein Teil reicht auch. \n\n"
@@ -52,14 +54,100 @@ def show_reviewed_modules(message):
                      parse_mode="Markdown")
 
 
+@bot.callback_query_handler(func=lambda call: call.data =='report')
+def send_report(call):
+    bot.send_message(call.message.chat.id, "Danke, Report wurde gesendet!")
+    bot.send_message(206662948, f"*Report ist eingegangen.* \n"
+                                f"Schau mal in die Bewertungen von *{module_name}* an.",
+                     parse_mode="Markdown")
+
+
+# WRITE REVIEW SECTION #
+@bot.callback_query_handler(func=lambda call: call.data =='bewerten')
+def get_semester(call):
+    bot.send_message(call.message.chat.id, "In welchem Semester wurde das Modul abgelegt? Schicken Sie einzelne Nachricht im folgenden Format 'WiSe20/21'.")
+    bot.set_state(call.message.chat.id, States.getting_semester)
+
+
+@bot.message_handler(state=States.getting_semester)
+def get_review(message):
+    bot.set_state(message.chat.id, States.writing)
+    global semester
+    semester = message.text
+    bot.send_message(message.chat.id, "Schreiben Sie Ihre Rezension!")
+
+
 @bot.message_handler(state=States.writing)
 def save_review(message):
-    #bot.send_message(message.chat.id, message.text) #return a message itself for test purposes
-    save_review_database(module_id, message.text, module_name)
-    bot.set_state(message.chat.id, States.reading)
-    bot.send_message(message.chat.id, "Vielen Dank für deine Rückmeldung. Sie wird demnächst veröffentlicht!")
+    if save_review_database(module_id, message.text, module_name, semester, message.chat.id):
+        bot.set_state(message.chat.id, States.reading)
+        bot.send_message(message.chat.id, "Vielen Dank für deine Rückmeldung. Sie wird demnächst veröffentlicht!")
+    else:
+        bot.set_state(message.chat.id, States.reading)
+        bot.send_message(message.chat.id, "Man darf mehr als eine Rezension für das Modul nicht schreiben.")
 
 
+# SHOW REVIEWS SECTION #
+@bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
+def show_reviews_list(call, page=1):
+    average_star = calculate_average_star(module_id)
+    print(module_id, average_star)
+    if average_star is None:
+        reviews = f"Leider gibt es noch keine Bewertungen."
+        bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=grade_markup())
+    else:
+        to_print = f"Durchschnittsnote ist {round(average_star, 1)} ⭐ / 5 ⭐ \n\n"
+        semesters = get_all_semester_for_module(module_id, module_name)
+        to_print += semesters[page-1]
+        to_print += "\n\n"
+        reviews = get_all_reviews_list(module_id, module_name)
+        paginator = InlineKeyboardPaginator(
+            page_count=len(reviews),
+            current_page=page,
+            data_pattern="review#{page}"
+        )
+        paginator.add_after(telebot.types.InlineKeyboardButton('Report', callback_data="report"))
+        bot.send_message(call.message.chat.id, to_print + reviews[page-1], parse_mode="HTML", reply_markup=paginator.markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='review')
+def reviews_page_callback(call):
+    global module_to_find
+    page = int(call.data.split('#')[1])
+    print(page)
+    bot.delete_message(
+        call.message.chat.id,
+        call.message.message_id
+    )
+    show_reviews_list(call, page)
+
+
+# STAR SECTION #
+@bot.callback_query_handler(func=lambda call: call.data =='stars')
+def give_star(call):
+    print(call)
+    bot.send_message(call.message.chat.id,
+                     "Geben Sie die Anzahl von Sternen für dieses Modul!\n\n"
+                     "5 - Gut gemacht. Würde sogar aus Spaß wiederholen\n"
+                     "4 - Ziemlich nice, aber leider nicht ideal\n"
+                     "3 - Passt. Gibt bessere, aber auch schlechtere\n"
+                     "2 - Naja, hätte nicht abgelegt\n"
+                     "1 - Albtraum. Nie wieder.",
+                     reply_markup=stars_markup())
+
+
+@bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='star')
+def save_star(call):
+    star = int(call.data.split('#')[1])
+    if (save_star_database(module_id, module_name, star, call.message.chat.id) == "success"):
+        bot.send_message(call.message.chat.id,
+                            "Danke, deine Bewertung wurde gespeichert.")
+    else:
+        bot.send_message(call.message.chat.id,
+                         "Das Modul wurde schon bewertet.")
+
+
+# MODULES SECTION #
 @bot.message_handler(func=lambda m: True, content_types=["text"])
 def show_modules(message, page=1):
     bot.set_state(message.chat.id, States.reading)
@@ -86,56 +174,6 @@ def show_modules(message, page=1):
         bot.send_message(message.chat.id, "Keine Module gefunden :(")
 
 
-@bot.callback_query_handler(func=lambda call: call.data =='bewertungen')
-def show_reviews(call):
-    average_star = calculate_average_star(module_id)
-    print(module_id, average_star)
-    if average_star is None:
-        reviews = f"Leider gibt es noch keine Bewertungen."
-        bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=grade_markup())
-    else:
-        reviews = f"Durchschnittsnote ist {round(average_star, 1)} ⭐ / 5 ⭐ \n\n"
-        reviews += get_all_reviews(module_id, module_name)
-        bot.send_message(call.message.chat.id, reviews, parse_mode="HTML", reply_markup=report_markup())
-
-
-@bot.callback_query_handler(func=lambda call: call.data =='report')
-def send_report(call):
-    bot.send_message(call.message.chat.id, "Danke, Report wurde gesendet!")
-    bot.send_message(206662948, f"*Report ist eingegangen.* \n"
-                                f"Schau mal in die Bewertungen von *{module_name}* an.",
-                     parse_mode="Markdown")
-
-
-@bot.callback_query_handler(func=lambda call: call.data =='bewerten')
-def get_review(call):
-    bot.send_message(call.message.chat.id, "Schreiben Sie Ihre Rezension!")
-    bot.set_state(call.message.chat.id, States.writing)
-
-
-@bot.callback_query_handler(func=lambda call: call.data =='stars')
-def give_star(call):
-    bot.send_message(call.message.chat.id,
-                     "Geben Sie die Anzahl von Sternen für dieses Modul!\n\n"
-                     "5 - Gut gemacht. Würde sogar aus Spaß wiederholen\n"
-                     "4 - Ziemlich nice, aber leider nicht ideal\n"
-                     "3 - Passt. Gibt bessere, aber auch schlechtere\n"
-                     "2 - Naja, hätte nicht abgelegt\n"
-                     "1 - Albtraum. Nie wieder.",
-                     reply_markup=stars_markup())
-
-
-@bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='star')
-def save_star(call):
-    star = int(call.data.split('#')[1])
-    if (save_star_database(module_id, module_name, star, call.message.chat.id) == "success"):
-        bot.send_message(call.message.chat.id,
-                            "Danke, deine Bewertung wurde gespeichert.")
-    else:
-        bot.send_message(call.message.chat.id,
-                         "Das Modul wurde schon bewertet.")
-
-
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='page')
 def characters_page_callback(call):
     global module_to_find
@@ -153,8 +191,8 @@ def show_specific_module(call):
     global module_id, module_name
     modules = find_modules(module_to_find)
     module = modules[int(call.data)]
-    nummer = module[0].split(" / ")[0]
-    version = module[0].split(" / ")[1]
+    nummer = module[0].split("\n")[0]
+    version = module[0].split("\n")[1].replace("(", "").replace(")", "")
     link = f"https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer={nummer}&version={version}&sprache=1"
     info = find_specific_module(link)
     module_id = nummer

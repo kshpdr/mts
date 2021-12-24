@@ -35,7 +35,6 @@ def find_specific_module(link):
 
     page = requests.get(link)
     soup = BeautifulSoup(page.content, "html.parser")
-
     titel_tag = soup.find_all("label", text="Titel des Moduls:")[0]
     info["titel"] = titel_tag.next_sibling.next_sibling.next_sibling.contents[0]
     lp_tag = soup.find_all("label", text="Leistungspunkte:")[0]
