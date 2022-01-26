@@ -107,16 +107,20 @@ def show_reviews_list(call, page=1):
     else:
         to_print = f"Durchschnittsnote ist {round(average_star, 1)} ⭐ / 5 ⭐ \n\n"
         semesters = get_all_semester_for_module(module_id, module_name)
-        to_print += semesters[page-1]
-        to_print += "\n\n"
-        reviews = get_all_reviews_list(module_id, module_name)
-        paginator = InlineKeyboardPaginator(
-            page_count=len(reviews),
-            current_page=page,
-            data_pattern="review#{page}"
-        )
-        paginator.add_after(telebot.types.InlineKeyboardButton('Report', callback_data="report"))
-        bot.send_message(call.message.chat.id, to_print + reviews[page-1], parse_mode="HTML", reply_markup=paginator.markup)
+        if type(semesters) is str:
+            to_print += "Leider gibt es noch keine Rezensionen."
+            bot.send_message(call.message.chat.id, to_print)
+        else:
+            to_print += semesters[page-1]
+            to_print += "\n\n"
+            reviews = get_all_reviews_list(module_id, module_name)
+            paginator = InlineKeyboardPaginator(
+                page_count=len(reviews),
+                current_page=page,
+                data_pattern="review#{page}"
+            )
+            paginator.add_after(telebot.types.InlineKeyboardButton('Report', callback_data="report"))
+            bot.send_message(call.message.chat.id, to_print + reviews[page-1], parse_mode="HTML", reply_markup=paginator.markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='review')
