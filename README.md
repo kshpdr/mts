@@ -1,6 +1,6 @@
 # mts
 
-The bot is temporarily unavailable due to the reconstruction of the source website of the university it relies on.
+_The bot is temporarily unavailable due to the reconstruction of the source website of the university it relies on._
 
 A representation of Module Transfer System that delivers some info about modules at the Technical University Berlin. But it also a feedback system, where students can right there opinion about the module and see, what their classmates think.
 
