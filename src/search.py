@@ -36,16 +36,23 @@ def find_specific_module(link):
     page = requests.get(link)
     soup = BeautifulSoup(page.content, "html.parser")
 
-    grading_key = soup.find_all("td", text="95.0")
-    if len(grading_key) == 0:
-        grading_key = soup.find_all("td", text="86.0")
-    if len(grading_key) == 0:
-        grading_key = soup.find_all("td", text="40.0")
+    table = None
+    for t in soup.find_all('table'):
+        if t.thead and t.thead.find_all('th') and t.thead.find_all('th')[0].text.strip() == 'Gesamtpunktzahl':
+            table = t
+            break
 
-    if len(grading_key) != 0:
-        info["key"] = grading_key[0].text
+    if table:
+        headers = [header.text.strip() for header in table.find_all("th")]
+        table_data = []
+        for row in table.find("tbody").find_all("tr"):
+            cells = row.find_all("td")
+            row_data = dict(zip(headers, [cell.text.strip() for cell in cells]))
+            table_data.append(row_data)
+        best_grade_threshold = table_data[0]["1.0"][:-2]
+        info["key"] = best_grade_threshold
     else:
-        info["key"] = "0"
+        info["key"] = '0'
 
     titel_tag = soup.find_all("label", text="Titel des Moduls:")[0]
     info["titel"] = titel_tag.next_sibling.next_sibling.next_sibling.contents[0]
@@ -54,10 +61,10 @@ def find_specific_module(link):
     modul_version_tag = soup.find_all("label", text="Modul / Version:")[0]
     info["modul/version"] = modul_version_tag.next_sibling.next_sibling.next_sibling.split(" ")[0] + "/" +  modul_version_tag.next_sibling.next_sibling.next_sibling.split(" ")[26]
     print(info["modul/version"])
-    verantwortliche_tag = soup.find_all("label", text="Verantwortliche Person:")[0]
-    info["verantwortliche"] = verantwortliche_tag.next_sibling.next_sibling.next_sibling
+    verantwortliche_tag = soup.find_all("label", text="Modulverantwortliche*r:")[0]
+    info["verantwortliche"] = verantwortliche_tag.next_sibling.next_sibling.contents[0]
     email_tag = soup.find_all("label", text="E-Mail-Adresse:")[0]
-    info["email"] = email_tag.next_sibling.next_sibling.next_sibling
+    info["email"] = email_tag.next_sibling.next_sibling
     lernergebnisse = soup.find_all("h3", text="Lernergebnisse")[0].parent.next_sibling.next_sibling.contents[0].contents[0]
     info["lernergebnisse"] = lernergebnisse
     lehrinhalte = soup.find_all("h3", text="Lehrinhalte")[0].parent.next_sibling.next_sibling.contents[0].contents[0]
@@ -65,4 +72,4 @@ def find_specific_module(link):
     return info
 
 
-print(find_specific_module("https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer=40029&version=5&sprache=1çç"))
+print(find_specific_module("https://moseskonto.tu-berlin.de/moses/modultransfersystem/bolognamodule/beschreibung/anzeigen.html?nummer=40029&version=5&sprache=1"))
