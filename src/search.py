@@ -54,7 +54,7 @@ def find_specific_module(link):
     modul_version_tag = soup.find_all("label", text="Modul / Version:")[0]
     info["modul/version"] = modul_version_tag.next_sibling.next_sibling.next_sibling.split(" ")[0] + "/" +  modul_version_tag.next_sibling.next_sibling.next_sibling.split(" ")[26]
     print(info["modul/version"])
-    verantwortliche_tag = soup.find_all("label", text="Verantwortliche Person:")[0]
+    verantwortliche_tag = soup.find_all("label", text="Modulverantwortliche*r:")[0]
     info["verantwortliche"] = verantwortliche_tag.next_sibling.next_sibling.next_sibling
     email_tag = soup.find_all("label", text="E-Mail-Adresse:")[0]
     info["email"] = email_tag.next_sibling.next_sibling.next_sibling
